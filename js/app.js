@@ -1,10 +1,10 @@
 // this function takes the question object returned by the StackOverflow request
 // and returns new result to be appended to DOM
 var showQuestion = function(question) {
-	
+
 	// clone our result template code
 	var result = $('.templates .question').clone();
-	
+
 	// Set the question properties in result
 	var questionElem = result.find('.question-text a');
 	questionElem.attr('href', question.link);
@@ -32,6 +32,36 @@ var showQuestion = function(question) {
 };
 
 
+// TODO: How can I repeat myself less?
+// this function takes the user object returned by the StackOverflow request
+// and returns new result to be appended to DOM
+var showAnswerer = function(answerer) {
+
+	// clone our result template code
+	var result = $('.templates .answerers').clone();
+
+  // Set the username property in result
+  var userElem = result.find('.username-text a');
+  userElem.attr('href', answerer.user.link);
+  userElem.text(answerer.user.display_name);
+
+  // Set the reputation property in result
+  var reputation = result.find('.reputation');
+  reputation.text(answerer.user.reputation);
+
+  // Set the post count property in result
+  var postCount = result.find('.post-count');
+  postCount.text(answerer.post_count);
+
+  // Set the score property in result
+  var score = result.find('.score');
+  score.text(answerer.score);
+
+  return result;
+};
+
+
+
 // this function takes the results object from StackOverflow
 // and returns the number of results and tags to be appended to DOM
 var showSearchResults = function(query, resultNum) {
@@ -49,15 +79,15 @@ var showError = function(error){
 // takes a string of semi-colon separated tags to be searched
 // for on StackOverflow
 var getUnanswered = function(tags) {
-	
+
 	// the parameters we need to pass in our request to StackOverflow's API
-	var request = { 
+	var request = {
 		tagged: tags,
 		site: 'stackoverflow',
 		order: 'desc',
 		sort: 'creation'
 	};
-	
+
 	$.ajax({
 		url: "http://api.stackexchange.com/2.2/questions/unanswered",
 		data: request,
@@ -66,7 +96,6 @@ var getUnanswered = function(tags) {
 	})
 	.done(function(result){ //this waits for the ajax to return with a succesful promise object
 		var searchResults = showSearchResults(request.tagged, result.items.length);
-
 		$('.search-results').html(searchResults);
 		//$.each is a higher order function. It takes an array and a function as an argument.
 		//The function is executed once for each item in the array.
@@ -82,7 +111,42 @@ var getUnanswered = function(tags) {
 };
 
 
-$(document).ready( function() {
+
+var getInspiration = function(tag) {
+	// the parameters we need to pass in our request to StackOverflow's API
+	var request = {
+    tagged: tag,
+    site: 'stackoverflow',
+    order: 'desc',
+    sort: 'creation'
+	};
+
+	$.ajax({
+		url: "http://api.stackexchange.com/2.2/tags/" + tag + "/top-answerers/all_time",
+		data: request,
+		dataType: "jsonp", //use jsonp to avoid cross origin issues
+		type: "GET",
+	})
+  .done(function(result){ //this waits for the ajax to return with a succesful promise object
+		var searchResults = showSearchResults(request.tagged, result.items.length);
+		$('.search-results').html(searchResults);
+		//$.each is a higher order function. It takes an array and a function as an argument.
+		//The function is executed once for each item in the array.
+		$.each(result.items, function(i, item) {
+			var answerer = showAnswerer(item);
+			$('.results').append(answerer);
+		});
+	})
+	.fail(function(jqXHR, error){ //this waits for the ajax to return with an error promise object
+		var errorElem = showError(error);
+		$('.search-results').append(errorElem);
+	});
+};
+
+
+
+
+$(function() {
 	$('.unanswered-getter').submit( function(e){
 		e.preventDefault();
 		// zero out results if previous search has run
@@ -91,4 +155,12 @@ $(document).ready( function() {
 		var tags = $(this).find("input[name='tags']").val();
 		getUnanswered(tags);
 	});
+	$('.inspiration-getter').submit(function(e) {
+  	e.preventDefault();
+  	// zero out results if prefious search has run
+  	$('.results').html('');
+  	// get the value of the tags the user submitted
+  	var tag = $(this).find("input[name='answerers']").val();
+  	getInspiration(tag);
+  });
 });
